@@ -29,6 +29,10 @@
     </None>
     <None Include="phong.vert" />
     <None Include="phong.frag" />
+    <None Include="toon.frag" />
+    <None Include="toon.vert" />
+    <None Include="minnaert.vert" />
+    <None Include="minnaert.frag" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

@@ -79,6 +79,10 @@
     <None Include="base.vert" />
     <None Include="basic.frag" />
     <None Include="basic.vert" />
+    <None Include="minnaert.vert" />
+    <None Include="minnaert.frag" />
+    <None Include="toon.frag" />
+    <None Include="toon.vert" />
     <None Include="gouraud.frag" />
     <None Include="phong.frag" />
     <None Include="phong.vert" />

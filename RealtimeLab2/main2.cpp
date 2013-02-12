@@ -20,7 +20,9 @@
 
 
 
-GLuint v, f, p;
+GLuint v_toon, f_toon, p_toon;
+GLuint v_phong, f_phong, p_phong;
+GLuint v_minn, f_minn, p_minn;
 
 char * vs[3];
 char * fs[3];
@@ -31,7 +33,30 @@ float xrot = 0;
 
 DWORD		lastTickCount;
 
+GLint tresh1;
+float tresh1_value = 0.95;
 
+GLint gl_ior;
+float ior = 1.9;
+GLint gl_k = 1.5;
+float k = 1.5;
+GLint gl_roughness = 0.15;
+float roughness = 0.15;
+
+
+float clamp_amt = 0.0;
+GLint gl_clamp;
+
+
+
+void setShadersminnaert();
+void setShaderstoon();
+void setShadersPhong();
+
+typedef void (*fn)();
+static fn funcs[] = {setShadersminnaert, setShaderstoon, setShadersPhong };
+
+int calls[] = {0, 1, 2};
 
 void changeSize(int w, int h) {
 
@@ -53,25 +78,67 @@ void changeSize(int w, int h) {
 	gluPerspective(45,ratio,1,1000);
 	glMatrixMode(GL_MODELVIEW);
 
-
 }
 
 
+int rotate (int * a, int n, int k) {
+int c, tmp, v;
+
+    if (a == NULL || n <= 0) return -__LINE__;
+    if (k < 0 || k >= n) {
+        k %= n;
+        if (k < 0) k += n;
+    }
+    if (k == 0) return 0;
+
+    c = 0;
+    for (v = 0; c < n; v++) {
+        int t = v, tp = v + k;
+        int tmp = a[v];
+        c++;
+        while (tp != v) {
+            a[t] = a[tp];
+            t = tp;
+            tp += k;
+            if (tp >= n) tp -= n;
+            c++;
+        }
+        a[t] = tmp;
+    }
+
+    return 0;
+}
 void renderScene(void) {
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glLoadIdentity();
-	gluLookAt(0.0,0.0,5.0, 
+	gluLookAt(0.0,0.0,10.0, 
 		      0.0,0.0,-1.0,
 			  0.0f,1.0f,0.0f);
 
 	glLightfv(GL_LIGHT0, GL_POSITION, lpos);
+	funcs[calls[0]]();
 	glPushMatrix();
-	glRotatef(rot, 0, 1, 0);
-	glRotatef(xrot, 0, 0, 1);
-	glutSolidTeapot(1);
+		glTranslatef(-3.0f, 0.0f, 0.0f);
+		glRotatef(rot, 0, 1, 0);
+		glRotatef(xrot, 0, 0, 1);
+		glutSolidTeapot(1);
 	glPopMatrix();
+	funcs[calls[1]]();
+	glPushMatrix();
+		glRotatef(rot, 0, 1, 0);
+		glRotatef(xrot, 0, 0, 1);
+		glutSolidCube(1);
+	glPopMatrix();
+	funcs[calls[2]]();
+	glPushMatrix();
+		glTranslatef(3.0f, 0.0f, 0.0f);
+		glRotatef(rot, 0, 1, 0);
+		glRotatef(xrot, 0, 0, 1);
+		glutSolidTeapot(1);
+	glPopMatrix();
+	
 	glutSwapBuffers();
 }
 
@@ -84,67 +151,93 @@ Problem with const arguments I could _not_ figure out
 
 
 
-void setShadersGouraud() {
+void loadShadersminnaert() {
 	char *vs = NULL,*fs = NULL;
 
-	v = glCreateShader(GL_VERTEX_SHADER);
-	f = glCreateShader(GL_FRAGMENT_SHADER);
+	v_minn = glCreateShader(GL_VERTEX_SHADER);
+	f_minn = glCreateShader(GL_FRAGMENT_SHADER);
 	
-	vs = textFileRead("base.vert");
-	fs = textFileRead("gouraud.frag");
+	vs = textFileRead("minnaert.vert");
+	fs = textFileRead("minnaert.frag");
 	
 	const char * ff = fs;
 	const char * vv = vs;
 
-	glShaderSource(v, 1, &vv, NULL);
-	glShaderSource(f, 1, &ff, NULL);
+	glShaderSource(v_minn, 1, &vv, NULL);
+	glShaderSource(f_minn, 1, &ff, NULL);
 	
 	free(vs);free(fs);
 
-	glCompileShader(v);
-	glCompileShader(f);
+	glCompileShader(v_minn);
+	glCompileShader(f_minn);
 	
-	p = glCreateProgram();
-	glAttachShader(p,f);
-	glAttachShader(p,v);
+	p_minn = glCreateProgram();
+	glAttachShader(p_minn,f_minn);
+	glAttachShader(p_minn,v_minn);
 
-	glLinkProgram(p);
-	glUseProgram(p);
+	glLinkProgram(p_minn);
+	
 }
 
-void setShadersBasic() {
+void setShadersminnaert() {
+
+	glUseProgram(p_minn);
+
+	gl_ior = glGetUniformLocation(p_minn, "ior");
+	glUniform1f(gl_ior, ior);
+
+	gl_k = glGetUniformLocation(p_minn, "k");
+	glUniform1f(gl_k, k);
+
+	gl_roughness = glGetUniformLocation(p_minn, "roughness");
+	glUniform1f(gl_roughness, roughness);
+
+
+
+}
+
+void loadShaderstoon() {
 	char *vs = NULL,*fs = NULL;
 
-	v = glCreateShader(GL_VERTEX_SHADER);
-	f = glCreateShader(GL_FRAGMENT_SHADER);
+	v_toon = glCreateShader(GL_VERTEX_SHADER);
+	f_toon = glCreateShader(GL_FRAGMENT_SHADER);
 	
-	vs = textFileRead("basic.vert");
-	fs = textFileRead("basic.frag");
+	vs = textFileRead("toon.vert");
+	fs = textFileRead("toon.frag");
 	
 	const char * f1 = fs;
 	const char * v1 = vs;
 
-	glShaderSource(v, 1, &v1, NULL);
-	glShaderSource(f, 1, &f1, NULL);
+	glShaderSource(v_toon, 1, &v1, NULL);
+	glShaderSource(f_toon, 1, &f1, NULL);
 	
 	free(vs);free(fs);
 
-	glCompileShader(v);
-	glCompileShader(f);
+	glCompileShader(v_toon);
+	glCompileShader(f_toon);
 	
-	p = glCreateProgram();
-	glAttachShader(p,f);
-	glAttachShader(p,v);
+	p_toon = glCreateProgram();
+	glAttachShader(p_toon,f_toon);
+	glAttachShader(p_toon,v_toon);
 
-	glLinkProgram(p);
-	glUseProgram(p);
+	glLinkProgram(p_toon);
+	
 }
 
-void setShadersPhong() {
+void setShaderstoon() {
+
+	glUseProgram(p_toon);
+
+	tresh1 = glGetUniformLocation(p_toon, "tresh");
+	glUniform1f(tresh1, tresh1_value);
+
+}
+
+void loadShadersPhong() {
 	char *vs = NULL,*fs = NULL;
 
-	v = glCreateShader(GL_VERTEX_SHADER);
-	f = glCreateShader(GL_FRAGMENT_SHADER);
+	v_phong = glCreateShader(GL_VERTEX_SHADER);
+	f_phong = glCreateShader(GL_FRAGMENT_SHADER);
 	
 	vs = textFileRead("phong.vert");
 	fs = textFileRead("phong.frag");
@@ -152,20 +245,33 @@ void setShadersPhong() {
 	const char * f1 = fs;
 	const char * v1 = vs;
 
-	glShaderSource(v, 1, &v1, NULL);
-	glShaderSource(f, 1, &f1, NULL);
+	glShaderSource(v_phong, 1, &v1, NULL);
+	glShaderSource(f_phong, 1, &f1, NULL);
 	
 	free(vs);free(fs);
 
-	glCompileShader(v);
-	glCompileShader(f);
+	glCompileShader(v_phong);
+	glCompileShader(f_phong);
 	
-	p = glCreateProgram();
-	glAttachShader(p,f);
-	glAttachShader(p,v);
+	p_phong = glCreateProgram();
+	glAttachShader(p_phong,f_phong);
+	glAttachShader(p_phong,v_phong);
 
-	glLinkProgram(p);
-	glUseProgram(p);
+	glLinkProgram(p_phong);
+	
+}
+
+void setShadersPhong() {
+
+	glUseProgram(p_phong);
+
+	gl_clamp = glGetUniformLocation(p_phong, "clamp_amt");
+	glUniform1f(gl_clamp, clamp_amt);
+
+	//glMaterialfv(GL_FRONT, GL_DIFFUSE, matDiffuse);
+	//glMaterialfv(GL_FRONT, GL_SPECULAR, matSpecular);
+	//glMaterialfv(GL_FRONT, GL_SHININESS, matShininess);
+
 }
 
 
@@ -182,13 +288,13 @@ void processNormalKeys(unsigned char key, int x, int y) {
 		rot += 5;
 		break;
 	case 'z':
-		setShadersBasic();
+		setShaderstoon();
 		break;
 	case 'x':
 		setShadersPhong();
 		break;
 	case 'c':
-		setShadersGouraud();
+		setShadersminnaert();
 		break;
 	case 'w':
 		xrot += 5;
@@ -198,6 +304,19 @@ void processNormalKeys(unsigned char key, int x, int y) {
 		break;
 	case 'r':
 		xrot = 0;
+		break;
+	case 'i' :
+		tresh1_value -= 0.1;
+		k -= 1.1;
+		clamp_amt -= 0.1;
+		break;
+	case 'o' :
+		tresh1_value += 0.1;
+		k += 1.1;
+		clamp_amt += 0.1;
+		break;
+	case 'k' :
+		rotate(calls, 3, 1);
 		break;
 	}
 
@@ -246,9 +365,15 @@ int main(int argc, char **argv) {
 		printf("OpenGL 2.0 not supported\n");
 		exit(1);
 	}
-	
+	//glMaterialfv(GL_FRONT, GL_DIFFUSE, matDiffuse);
+	//glMaterialfv(GL_FRONT, GL_SPECULAR, matSpecular);
+	//glMaterialfv(GL_FRONT, GL_SHININESS, matShininess);
 
-	setShadersBasic();
+	loadShadersminnaert();
+	loadShadersPhong();
+	loadShaderstoon();
+
+	setShaderstoon();
 
 
 	glutMainLoop();
